@@ -85,9 +85,15 @@ class Dashboard extends Component
 
     public function getMonthlyTrendDataProperty(): array
     {
+        $driver = DB::getDriverName();
+        $monthExpr = match ($driver) {
+            'sqlite' => DB::raw("strftime('%Y-%m', expense_date) as month"),
+            default => DB::raw("DATE_FORMAT(expense_date, '%Y-%m') as month"),
+        };
+
         $data = Expense::query()
             ->where('user_id', auth()->id())
-            ->select(DB::raw("DATE_FORMAT(expense_date, '%Y-%m') as month"), DB::raw('SUM(cost) as total'))
+            ->select($monthExpr, DB::raw('SUM(cost) as total'))
             ->groupBy('month')
             ->orderBy('month')
             ->limit(12)
@@ -112,8 +118,19 @@ class Dashboard extends Component
             ->whereBetween('expense_date', [$this->dateFrom, $this->dateTo]);
     }
 
+    public function fetchChartData(): array
+    {
+        return [
+            'category' => $this->categoryChartData,
+            'monthly' => $this->monthlyTrendData,
+        ];
+    }
+
     public function render()
     {
-        return view('livewire.dashboard');
+        return view('livewire.dashboard', [
+            'categoryChart' => $this->categoryChartData,
+            'monthlyTrendChart' => $this->monthlyTrendData,
+        ]);
     }
 }

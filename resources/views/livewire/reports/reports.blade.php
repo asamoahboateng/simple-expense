@@ -10,17 +10,17 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From</label>
                 <input type="date" wire:model="exportDateFrom"
-                       class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                       class="w-full p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Until</label>
                 <input type="date" wire:model="exportDateTo"
-                       class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                       class="w-full p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
                 <select wire:model="exportCategoryId"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        class="w-full p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <option value="">All Categories</option>
                     @foreach($categories as $cat)
                         <option value="{{ $cat->id }}">{{ $cat->name }}</option>
@@ -30,7 +30,7 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Person</label>
                 <input type="text" wire:model="exportPerson" placeholder="Filter by person..."
-                       class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                       class="w-full p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
             </div>
         </div>
         <div class="flex gap-3">

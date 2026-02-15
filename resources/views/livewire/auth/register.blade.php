@@ -5,28 +5,28 @@
         <div>
             <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
             <input wire:model="name" type="text" id="name" autocomplete="name"
-                   class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                   class="w-full p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
             @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
 
         <div>
             <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
             <input wire:model="email" type="email" id="email" autocomplete="email"
-                   class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                   class="w-full p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
             @error('email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
 
         <div>
             <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
             <input wire:model="password" type="password" id="password" autocomplete="new-password"
-                   class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                   class="w-full p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
             @error('password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
 
         <div>
             <label for="password_confirmation" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
             <input wire:model="password_confirmation" type="password" id="password_confirmation" autocomplete="new-password"
-                   class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                   class="w-full p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
         </div>
 
         <button type="submit"

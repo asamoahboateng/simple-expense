@@ -16,6 +16,7 @@ use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
@@ -24,6 +25,15 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
 {
     use InteractsWithActions;
     use InteractsWithSchemas;
+
+    #[Url]
+    public string $search = '';
+
+    public string $filter = 'all';
+
+    public ?int $editingMainId = null;
+
+    public ?int $editingSubId = null;
 
     public function createMainCategoryAction(): Action
     {
@@ -43,6 +53,13 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
             });
     }
 
+    // Called from blade via wire:click
+    public function startEditMainCategory(int $id): void
+    {
+        $this->editingMainId = $id;
+        $this->mountAction('editMainCategory');
+    }
+
     public function editMainCategoryAction(): Action
     {
         return Action::make('editMainCategory')
@@ -54,13 +71,16 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
                 ColorPicker::make('color'),
                 TextInput::make('sort_order')->numeric(),
             ])
-            ->fillForm(function (array $arguments): array {
-                $category = MainCategory::findOrFail($arguments['id']);
-                return $category->toArray();
+            ->fillForm(function (): array {
+                if (! $this->editingMainId) return [];
+
+                return MainCategory::findOrFail($this->editingMainId)->toArray();
             })
-            ->action(function (array $data, array $arguments): void {
-                $category = MainCategory::findOrFail($arguments['id']);
-                $category->update($data);
+            ->action(function (array $data): void {
+                if (! $this->editingMainId) return;
+
+                MainCategory::findOrFail($this->editingMainId)->update($data);
+                $this->editingMainId = null;
                 Notification::make()->title('Category updated')->success()->send();
             });
     }
@@ -68,11 +88,17 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
     public function deleteMainCategoryAction(): Action
     {
         return Action::make('deleteMainCategory')
+            ->iconButton()
+            ->icon('heroicon-o-trash')
+            ->tooltip('Delete')
+            ->size('sm')
             ->requiresConfirmation()
             ->modalHeading('Delete Category')
             ->modalDescription('This will delete the category and all its subcategories. Are you sure?')
             ->color('danger')
             ->action(function (array $arguments): void {
+                if (! isset($arguments['id'])) return;
+
                 $category = MainCategory::findOrFail($arguments['id']);
                 $category->delete();
                 Notification::make()->title('Category deleted')->success()->send();
@@ -82,9 +108,14 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
     public function createSubCategoryAction(): Action
     {
         return Action::make('createSubCategory')
+            ->iconButton()
+            ->icon('heroicon-o-plus')
+            ->tooltip('Add Subcategory')
+            ->color('gray')
+            ->size('sm')
             ->modalHeading('Create Subcategory')
             ->form(function (array $arguments): array {
-                $mainCategoryId = $arguments['main_category_id'];
+                $mainCategoryId = $arguments['main_category_id'] ?? null;
 
                 return [
                     TextInput::make('name')->required()->maxLength(255),
@@ -92,6 +123,8 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
                     Select::make('parent_id')
                         ->label('Parent Subcategory')
                         ->options(function () use ($mainCategoryId) {
+                            if (! $mainCategoryId) return [];
+
                             return SubCategory::where('main_category_id', $mainCategoryId)
                                 ->get()
                                 ->mapWithKeys(fn ($sub) => [$sub->id => $sub->breadcrumb]);
@@ -102,6 +135,8 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
                 ];
             })
             ->action(function (array $data, array $arguments): void {
+                if (! isset($arguments['main_category_id'])) return;
+
                 SubCategory::create([
                     ...$data,
                     'main_category_id' => $arguments['main_category_id'],
@@ -110,12 +145,19 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
             });
     }
 
+    // Called from blade via wire:click
+    public function startEditSubCategory(int $id): void
+    {
+        $this->editingSubId = $id;
+        $this->mountAction('editSubCategory');
+    }
+
     public function editSubCategoryAction(): Action
     {
         return Action::make('editSubCategory')
             ->modalHeading('Edit Subcategory')
-            ->form(function (array $arguments): array {
-                $sub = SubCategory::findOrFail($arguments['id']);
+            ->form(function (): array {
+                $sub = $this->editingSubId ? SubCategory::find($this->editingSubId) : null;
 
                 return [
                     TextInput::make('name')->required()->maxLength(255),
@@ -123,6 +165,8 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
                     Select::make('parent_id')
                         ->label('Parent Subcategory')
                         ->options(function () use ($sub) {
+                            if (! $sub) return [];
+
                             return SubCategory::where('main_category_id', $sub->main_category_id)
                                 ->where('id', '!=', $sub->id)
                                 ->get()
@@ -133,12 +177,16 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
                     TextInput::make('sort_order')->numeric(),
                 ];
             })
-            ->fillForm(function (array $arguments): array {
-                return SubCategory::findOrFail($arguments['id'])->toArray();
+            ->fillForm(function (): array {
+                if (! $this->editingSubId) return [];
+
+                return SubCategory::findOrFail($this->editingSubId)->toArray();
             })
-            ->action(function (array $data, array $arguments): void {
-                $sub = SubCategory::findOrFail($arguments['id']);
-                $sub->update($data);
+            ->action(function (array $data): void {
+                if (! $this->editingSubId) return;
+
+                SubCategory::findOrFail($this->editingSubId)->update($data);
+                $this->editingSubId = null;
                 Notification::make()->title('Subcategory updated')->success()->send();
             });
     }
@@ -146,24 +194,55 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
     public function deleteSubCategoryAction(): Action
     {
         return Action::make('deleteSubCategory')
+            ->iconButton()
+            ->icon('heroicon-o-trash')
+            ->tooltip('Delete')
+            ->size('xs')
             ->requiresConfirmation()
             ->modalHeading('Delete Subcategory')
             ->modalDescription('This will delete this subcategory and all its children. Are you sure?')
             ->color('danger')
             ->action(function (array $arguments): void {
+                if (! isset($arguments['id'])) return;
+
                 $sub = SubCategory::findOrFail($arguments['id']);
-                $sub->delete();
+                $this->deleteSubCategoryRecursively($sub);
                 Notification::make()->title('Subcategory deleted')->success()->send();
             });
     }
 
+    private function deleteSubCategoryRecursively(SubCategory $sub): void
+    {
+        foreach ($sub->children as $child) {
+            $this->deleteSubCategoryRecursively($child);
+        }
+        $sub->delete();
+    }
+
     public function render()
     {
+        $query = MainCategory::with('rootSubCategoriesWithChildren')
+            ->orderBy('sort_order')
+            ->orderBy('name');
+
+        if ($this->search !== '') {
+            $searchTerm = $this->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                    ->orWhereHas('subCategories', function ($sq) use ($searchTerm) {
+                        $sq->where('name', 'like', "%{$searchTerm}%");
+                    });
+            });
+        }
+
+        if ($this->filter === 'with-subs') {
+            $query->has('subCategories');
+        } elseif ($this->filter === 'empty') {
+            $query->doesntHave('subCategories');
+        }
+
         return view('livewire.categories.category-index', [
-            'mainCategories' => MainCategory::with('rootSubCategoriesWithChildren')
-                ->orderBy('sort_order')
-                ->orderBy('name')
-                ->get(),
+            'mainCategories' => $query->get(),
         ]);
     }
 }

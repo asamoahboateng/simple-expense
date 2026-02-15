@@ -3,6 +3,7 @@
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Livewire\Categories\CategoryIndex;
+use App\Livewire\Categories\CategoryReport;
 use App\Livewire\Dashboard;
 use App\Livewire\Expenses\ExpenseForm;
 use App\Livewire\Expenses\ExpenseList;
@@ -24,6 +25,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/', Dashboard::class)->name('dashboard');
     Route::get('/categories', CategoryIndex::class)->name('categories.index');
+    Route::get('/categories/{mainCategory}/report', CategoryReport::class)->name('categories.report');
     Route::get('/expenses', ExpenseList::class)->name('expenses.index');
     Route::get('/expenses/create', ExpenseForm::class)->name('expenses.create');
     Route::get('/expenses/{expense}/edit', ExpenseForm::class)->name('expenses.edit');

@@ -3,10 +3,10 @@
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2>
         <div class="flex items-center gap-3">
             <input type="date" wire:model.live="dateFrom"
-                   class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                   class="p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
             <span class="text-gray-500 dark:text-gray-400 text-sm">to</span>
             <input type="date" wire:model.live="dateTo"
-                   class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                   class="p-2 font-normal rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
         </div>
     </div>
 
@@ -74,29 +74,23 @@
         {{-- Category Pie Chart --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Spending by Category</h3>
-            @if(empty($this->categoryChartData['labels']))
-                <div class="flex items-center justify-center h-64 text-gray-400">
+            <div wire:ignore>
+                <div id="categoryEmptyState" class="items-center justify-center h-64 text-gray-400" style="display: {{ empty($categoryChart['labels']) ? 'flex' : 'none' }}">
                     <p>No data for the selected period</p>
                 </div>
-            @else
-                <div wire:ignore>
-                    <canvas id="categoryPieChart"></canvas>
-                </div>
-            @endif
+                <canvas id="categoryPieChart" style="{{ empty($categoryChart['labels']) ? 'display:none' : '' }}"></canvas>
+            </div>
         </div>
 
         {{-- Monthly Trend Chart --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Monthly Spending Trend</h3>
-            @if(empty($this->monthlyTrendData['labels']))
-                <div class="flex items-center justify-center h-64 text-gray-400">
+            <div wire:ignore>
+                <div id="trendEmptyState" class="items-center justify-center h-64 text-gray-400" style="display: {{ empty($monthlyTrendChart['labels']) ? 'flex' : 'none' }}">
                     <p>No data available</p>
                 </div>
-            @else
-                <div wire:ignore>
-                    <canvas id="monthlyTrendChart"></canvas>
-                </div>
-            @endif
+                <canvas id="monthlyTrendChart" style="{{ empty($monthlyTrendChart['labels']) ? 'display:none' : '' }}"></canvas>
+            </div>
         </div>
     </div>
 
@@ -105,47 +99,69 @@
         let categoryChart = null;
         let trendChart = null;
 
-        function initCharts() {
-            // Category Pie Chart
+        function renderCharts(categoryData, trendData) {
             const categoryEl = document.getElementById('categoryPieChart');
+            const categoryEmpty = document.getElementById('categoryEmptyState');
+            const trendEl = document.getElementById('monthlyTrendChart');
+            const trendEmpty = document.getElementById('trendEmptyState');
+
+            // Category Pie Chart
             if (categoryEl) {
                 if (categoryChart) categoryChart.destroy();
-                categoryChart = new Chart(categoryEl, {
-                    type: 'doughnut',
-                    data: $wire.categoryChartData,
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { position: 'bottom' }
+                categoryChart = null;
+                if (categoryData.labels && categoryData.labels.length > 0) {
+                    categoryEl.style.display = '';
+                    if (categoryEmpty) categoryEmpty.style.display = 'none';
+                    categoryChart = new Chart(categoryEl, {
+                        type: 'doughnut',
+                        data: categoryData,
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { position: 'bottom' }
+                            }
                         }
-                    }
-                });
+                    });
+                } else {
+                    categoryEl.style.display = 'none';
+                    if (categoryEmpty) categoryEmpty.style.display = 'flex';
+                }
             }
 
             // Monthly Trend Chart
-            const trendEl = document.getElementById('monthlyTrendChart');
             if (trendEl) {
                 if (trendChart) trendChart.destroy();
-                trendChart = new Chart(trendEl, {
-                    type: 'bar',
-                    data: $wire.monthlyTrendData,
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: { beginAtZero: true }
-                        },
-                        plugins: {
-                            legend: { display: false }
+                trendChart = null;
+                if (trendData.labels && trendData.labels.length > 0) {
+                    trendEl.style.display = '';
+                    if (trendEmpty) trendEmpty.style.display = 'none';
+                    trendChart = new Chart(trendEl, {
+                        type: 'bar',
+                        data: trendData,
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: { beginAtZero: true }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
                         }
-                    }
-                });
+                    });
+                } else {
+                    trendEl.style.display = 'none';
+                    if (trendEmpty) trendEmpty.style.display = 'flex';
+                }
             }
         }
 
-        initCharts();
+        // Initial render with server-side data
+        renderCharts(@js($categoryChart), @js($monthlyTrendChart));
 
-        $wire.on('filters-updated', () => {
-            setTimeout(() => initCharts(), 100);
+        // Re-fetch on filter change
+        $wire.on('filters-updated', async () => {
+            const data = await $wire.fetchChartData();
+            renderCharts(data.category, data.monthly);
         });
     </script>
     @endscript

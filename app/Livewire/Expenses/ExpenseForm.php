@@ -31,6 +31,9 @@ class ExpenseForm extends Component implements HasSchemas
         $this->expense = $expense;
 
         if ($expense?->exists) {
+            if ($expense->user_id !== auth()->id()) {
+                abort(403);
+            }
             $this->form->fill($expense->toArray());
         } else {
             $this->form->fill([
@@ -66,7 +69,7 @@ class ExpenseForm extends Component implements HasSchemas
                     ->label('Main Category')
                     ->options(MainCategory::orderBy('name')->pluck('name', 'id'))
                     ->required()
-                    ->reactive()
+                    ->live()
                     ->afterStateUpdated(fn (callable $set) => $set('sub_category_id', null))
                     ->searchable(),
                 Select::make('sub_category_id')

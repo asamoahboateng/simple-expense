@@ -8,16 +8,16 @@
     "require": {
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
-        "filament/actions": "^5.0",
-        "filament/forms": "^5.0",
-        "filament/infolists": "^5.0",
-        "filament/notifications": "^5.0",
-        "filament/schemas": "^5.0",
-        "filament/tables": "^5.0",
-        "filament/widgets": "^5.0",
+        "filament/actions": "^5.2",
+        "filament/forms": "^5.2",
+        "filament/infolists": "^5.2",
+        "filament/notifications": "^5.2",
+        "filament/schemas": "^5.2",
+        "filament/tables": "^5.2",
+        "filament/widgets": "^5.2",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
-        "livewire/livewire": "^4.0",
+        "livewire/livewire": "^4.1",
         "maatwebsite/excel": "^3.1"
     },
     "require-dev": {
@@ -60,7 +60,8 @@
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi"
+            "@php artisan package:discover --ansi",
+            "@php artisan filament:upgrade"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"

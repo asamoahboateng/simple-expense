@@ -58,14 +58,21 @@
                 Organize spending by category, visualize trends with charts, and export reports to Excel or PDF. All in one clean, simple tool.
             </p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <a href="{{ route('register') }}"
-                   class="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all hover:shadow-xl hover:shadow-blue-600/30">
-                    Start Tracking Free
-                </a>
-                <a href="{{ route('login') }}"
-                   class="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
-                    Sign In
-                </a>
+                @auth
+                    <a href="{{ route('dashboard') }}"
+                       class="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all hover:shadow-xl hover:shadow-blue-600/30">
+                        Go to Dashboard
+                    </a>
+                @else
+                    <a href="{{ route('register') }}"
+                       class="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all hover:shadow-xl hover:shadow-blue-600/30">
+                        Start Tracking Free
+                    </a>
+                    <a href="{{ route('login') }}"
+                       class="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                        Sign In
+                    </a>
+                @endauth
             </div>
         </div>
     </section>
@@ -165,10 +172,17 @@
         <div class="max-w-3xl mx-auto text-center">
             <h2 class="text-3xl font-bold mb-4">Ready to take control of your spending?</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-8">Create a free account and start tracking your expenses in minutes.</p>
-            <a href="{{ route('register') }}"
-               class="inline-flex px-8 py-3.5 text-base font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all hover:shadow-xl hover:shadow-blue-600/30">
-                Get Started Now
-            </a>
+            @auth
+                <a href="{{ route('dashboard') }}"
+                   class="inline-flex px-8 py-3.5 text-base font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all hover:shadow-xl hover:shadow-blue-600/30">
+                    Go to Dashboard
+                </a>
+            @else
+                <a href="{{ route('register') }}"
+                   class="inline-flex px-8 py-3.5 text-base font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all hover:shadow-xl hover:shadow-blue-600/30">
+                    Get Started Now
+                </a>
+            @endauth
         </div>
     </section>
 

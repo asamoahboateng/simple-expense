@@ -84,7 +84,8 @@ class ExpenseList extends Component implements HasTable, HasActions, HasSchemas
                     }),
             ])
             ->recordActions([
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->requiresConfirmation(),
             ])
             ->recordUrl(fn (Expense $record) => route('expenses.edit', $record))
             ->defaultSort('expense_date', 'desc')

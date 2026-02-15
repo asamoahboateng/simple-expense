@@ -7,8 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? config('app.name') }}</title>
     <style>[x-cloak] { display: none !important; }</style>
-    @filamentStyles
     @vite('resources/css/app.css')
+    @filamentStyles
 </head>
 <body class="antialiased bg-gray-50 dark:bg-gray-900">
     <div class="flex min-h-screen" x-data="{ sidebarOpen: false }">
