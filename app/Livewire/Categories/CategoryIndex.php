@@ -37,6 +37,10 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
 
     public ?int $creatingSubForMainId = null;
 
+    public ?int $deletingMainId = null;
+
+    public ?int $deletingSubId = null;
+
     public function createMainCategoryAction(): Action
     {
         return Action::make('createMainCategory')
@@ -87,22 +91,25 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
             });
     }
 
+    public function startDeleteMainCategory(int $id): void
+    {
+        $this->deletingMainId = $id;
+        $this->mountAction('deleteMainCategory');
+    }
+
     public function deleteMainCategoryAction(): Action
     {
         return Action::make('deleteMainCategory')
-            ->iconButton()
-            ->icon('heroicon-o-trash')
-            ->tooltip('Delete')
-            ->size('sm')
             ->requiresConfirmation()
             ->modalHeading('Delete Category')
             ->modalDescription('This will delete the category and all its subcategories. Are you sure?')
             ->color('danger')
-            ->action(function (array $arguments): void {
-                if (! isset($arguments['id'])) return;
+            ->action(function (): void {
+                if (! $this->deletingMainId) return;
 
-                $category = MainCategory::findOrFail($arguments['id']);
+                $category = MainCategory::findOrFail($this->deletingMainId);
                 $category->delete();
+                $this->deletingMainId = null;
                 Notification::make()->title('Category deleted')->success()->send();
             });
     }
@@ -195,22 +202,25 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
             });
     }
 
+    public function startDeleteSubCategory(int $id): void
+    {
+        $this->deletingSubId = $id;
+        $this->mountAction('deleteSubCategory');
+    }
+
     public function deleteSubCategoryAction(): Action
     {
         return Action::make('deleteSubCategory')
-            ->iconButton()
-            ->icon('heroicon-o-trash')
-            ->tooltip('Delete')
-            ->size('xs')
             ->requiresConfirmation()
             ->modalHeading('Delete Subcategory')
             ->modalDescription('This will delete this subcategory and all its children. Are you sure?')
             ->color('danger')
-            ->action(function (array $arguments): void {
-                if (! isset($arguments['id'])) return;
+            ->action(function (): void {
+                if (! $this->deletingSubId) return;
 
-                $sub = SubCategory::findOrFail($arguments['id']);
+                $sub = SubCategory::findOrFail($this->deletingSubId);
                 $this->deleteSubCategoryRecursively($sub);
+                $this->deletingSubId = null;
                 Notification::make()->title('Subcategory deleted')->success()->send();
             });
     }
