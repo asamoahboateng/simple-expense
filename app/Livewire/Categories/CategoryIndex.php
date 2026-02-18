@@ -35,6 +35,8 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
 
     public ?int $editingSubId = null;
 
+    public ?int $creatingSubForMainId = null;
+
     public function createMainCategoryAction(): Action
     {
         return Action::make('createMainCategory')
@@ -105,17 +107,18 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
             });
     }
 
+    public function startCreateSubCategory(int $mainCategoryId): void
+    {
+        $this->creatingSubForMainId = $mainCategoryId;
+        $this->mountAction('createSubCategory');
+    }
+
     public function createSubCategoryAction(): Action
     {
         return Action::make('createSubCategory')
-            ->iconButton()
-            ->icon('heroicon-o-plus')
-            ->tooltip('Add Subcategory')
-            ->color('gray')
-            ->size('sm')
             ->modalHeading('Create Subcategory')
-            ->form(function (array $arguments): array {
-                $mainCategoryId = $arguments['main_category_id'] ?? null;
+            ->form(function (): array {
+                $mainCategoryId = $this->creatingSubForMainId;
 
                 return [
                     TextInput::make('name')->required()->maxLength(255),
@@ -134,13 +137,14 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
                     TextInput::make('sort_order')->numeric()->default(0),
                 ];
             })
-            ->action(function (array $data, array $arguments): void {
-                if (! isset($arguments['main_category_id'])) return;
+            ->action(function (array $data): void {
+                if (! $this->creatingSubForMainId) return;
 
                 SubCategory::create([
                     ...$data,
-                    'main_category_id' => $arguments['main_category_id'],
+                    'main_category_id' => $this->creatingSubForMainId,
                 ]);
+                $this->creatingSubForMainId = null;
                 Notification::make()->title('Subcategory created')->success()->send();
             });
     }
