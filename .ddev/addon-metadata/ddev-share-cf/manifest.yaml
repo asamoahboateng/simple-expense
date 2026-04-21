@@ -1,0 +1,9 @@
+name: ddev-share-cf
+repository: asamoahboateng/ddev-share-cf
+version: feature/using-docker
+install_date: "2026-02-15T22:16:47-05:00"
+project_files:
+    - commands/host/share-cf
+    - docker-compose.cloudflared.yaml
+global_files: []
+removal_actions: []
