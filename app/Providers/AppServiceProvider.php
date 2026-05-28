@@ -7,12 +7,18 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        $host = request()->getHost();
+        if (str($host)->endsWith('.kalourmade.com') || $host === 'kalourmade.com') {
+            URL::forceScheme('https');
+        }
+    }
 
     public function boot(): void
     {
-        if (request()->getHost() === 'kalourmade.com') {
-            URL::forceScheme('https');
-        }
+        // if (request()->getHost() === 'kalourmade.com') {
+        //     URL::forceScheme('https');
+        // }
     }
 }
