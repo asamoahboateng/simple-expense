@@ -60,7 +60,6 @@ jobs:
             --exclude 'node_modules/' \
             --exclude 'storage/app/' \
             --exclude 'storage/logs/' \
-            --exclude 'storage/framework/' \
             -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
             ./ ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }}:~/simple-expense/
 
