@@ -88,7 +88,8 @@ class Dashboard extends Component
         $driver = DB::getDriverName();
         $monthExpr = match ($driver) {
             'sqlite' => DB::raw("strftime('%Y-%m', expense_date) as month"),
-            default => DB::raw("DATE_FORMAT(expense_date, '%Y-%m') as month"),
+            'pgsql'  => DB::raw("TO_CHAR(expense_date, 'YYYY-MM') as month"),
+            default  => DB::raw("DATE_FORMAT(expense_date, '%Y-%m') as month"),
         };
 
         $data = Expense::query()

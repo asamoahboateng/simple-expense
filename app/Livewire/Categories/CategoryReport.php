@@ -80,7 +80,8 @@ class CategoryReport extends Component
         $driver = DB::getDriverName();
         $dayExpr = match ($driver) {
             'sqlite' => DB::raw("strftime('%Y-%m-%d', expense_date) as day"),
-            default => DB::raw("DATE_FORMAT(expense_date, '%Y-%m-%d') as day"),
+            'pgsql'  => DB::raw("TO_CHAR(expense_date, 'YYYY-MM-DD') as day"),
+            default  => DB::raw("DATE_FORMAT(expense_date, '%Y-%m-%d') as day"),
         };
 
         $data = $this->baseQuery()
