@@ -1,0 +1,7 @@
+# dynamic_conf.yml - TLS certificate config for simple-expense
+# This file is mounted into Traefik's dynamic config directory.
+# Each project provides its own dynamic_conf with its certificate paths.
+tls:
+  certificates:
+    - certFile: /etc/traefik/certs/simple-expense/cert.pem
+      keyFile: /etc/traefik/certs/simple-expense/key.pem

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -e
+
+echo "Running init tasks..."
+
+# Install/update Composer dependencies
+echo "Installing Composer dependencies..."
+composer install --optimize-autoloader --no-interaction --no-cache
+
+# Run database migrations
+# echo "Running migrations..."
+# php artisan migrate --force
+
+# Link storage
+echo "Linking storage..."
+php artisan storage:link 2>/dev/null || true
+
+# Install npm dependencies and build assets
+echo "Installing npm dependencies..."
+npm install
+
+echo "Building assets..."
+npm run build
+
+echo "Init tasks completed successfully."

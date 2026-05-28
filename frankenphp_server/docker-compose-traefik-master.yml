@@ -1,0 +1,48 @@
+# docker-compose-traefik-master.yml
+# Run this FIRST to start Traefik reverse proxy
+# Supports multiple domains - each project drops its certs into the shared traefik_certs volume
+services:
+  traefik:
+    image: traefik:v3.6
+    container_name: km_traefik
+    restart: always
+    environment:
+      - DOCKER_API_VERSION=1.44
+      - TRAEFIK_HOST=${TRAEFIK_HOST:-traefik.localhost}
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic/"
+      - "--providers.file.watch=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "traefik_certs:/etc/traefik/certs:ro"
+      - "traefik_dynamic:/etc/traefik/dynamic:ro"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_HOST}`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$9PGgoG2E$$VwuFkN8PFIWcFwyJuucDq0"
+    networks:
+      - km_traefik-public
+
+networks:
+  km_traefik-public:
+    external: true
+
+volumes:
+  traefik_certs:
+    external: true
+  traefik_dynamic:
+    external: true

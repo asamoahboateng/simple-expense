@@ -1,0 +1,77 @@
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Doppler CLI
+        run: curl -Ls --tlsv1.2 https://cli.doppler.com/install.sh | sudo sh
+
+      - name: Fetch secrets from Doppler
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          echo "HETZNER_SERVER_IP=$(doppler secrets get HETZNER_SERVER_IP --plain)" >> $GITHUB_ENV
+          echo "HETZNER_SERVER_USER=$(doppler secrets get HETZNER_SERVER_USER --plain)" >> $GITHUB_ENV
+          doppler secrets get HETZNER_SERVER_KEY --plain > /tmp/ssh_key
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          cp /tmp/ssh_key ~/.ssh/id_rsa
+          rm /tmp/ssh_key
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.HETZNER_SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Ensure remote directory exists
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+            "mkdir -p ~/simple-expense"
+
+      - name: Stop services
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+            "cd ~/simple-expense && ./pha stop || true"
+
+      - name: Pre-Deployment Permission Fix
+        # Fixes the 'rsync 23' error by ensuring the user owns the directory before syncing
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+          "sudo chown -R ${{ env.HETZNER_SERVER_USER }}:${{ env.HETZNER_SERVER_USER }} ~/simple-expense || true"
+
+      - name: Rsync to server
+        run: |
+          rsync -avz --delete \
+            --no-perms --no-owner --no-group \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.env' \
+            --exclude 'vendor/' \
+            --exclude 'node_modules/' \
+            --exclude 'storage/app/' \
+            --exclude 'storage/logs/' \
+            --exclude 'storage/framework/' \
+            -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+            ./ ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }}:~/simple-expense/
+
+      - name: Copy .env.example to .env
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+            "cd ~/simple-expense/frankenphp_server && cp .env.example .env && echo '.env updated from .env.example in frankenphp'"
+
+      - name: Start services
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+            "cd ~/simple-expense && ./pha start "

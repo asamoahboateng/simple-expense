@@ -1,0 +1,276 @@
+services:
+  # Init service - runs composer install and migrations before main app starts
+  init:
+    build:
+      context: ..
+      dockerfile: ./frankenphp_server/Dockerfile.frankenphp
+    container_name: simple-expense_init_franken
+    entrypoint: ["/bin/sh", "/app/frankenphp_server/init.sh"]
+    volumes:
+      - ../:/app
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    #   redis:
+    #     condition: service_started
+    restart: "no"
+    networks:
+      - simple-expense_net
+      - km_traefik-public
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: ./frankenphp_server/Dockerfile.frankenphp
+    container_name: rxinventory_migrate
+    entrypoint: >
+      /bin/sh -c "php artisan config:clear &&
+                  php artisan migrate --force"
+    volumes:
+      - ../:/app
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    networks:
+      - simple-expense_net
+      - km_traefik-public
+
+  # Copies project certs and dynamic config into shared Traefik volumes
+  # cert_loader:
+  #   image: alpine:3.20
+  #   container_name: simple-expense_cert_loader
+  #   entrypoint: ["/bin/sh", "-c"]
+  #   command:
+  #     - |
+  #       mkdir -p /certs/simple-expense
+  #       cp /project-certs/cert.pem /certs/simple-expense/cert.pem
+  #       cp /project-certs/key.pem /certs/simple-expense/key.pem
+  #       cp /project-dynamic/dynamic_conf.yml /dynamic/simple-expense.yml
+  #       echo "Certs and dynamic config loaded for simple-expense"
+  #   volumes:
+  #     - ./certs/${APP_ENV:-local}:/project-certs:ro
+  #     - ./dynamic_conf.yml:/project-dynamic/dynamic_conf.yml:ro
+  #     - traefik_certs:/certs
+  #     - traefik_dynamic:/dynamic
+  #   restart: "no"
+  #   networks:
+  #     - simple-expense_net
+
+  frankenphp:
+    build:
+      context: ..
+      dockerfile: ./frankenphp_server/Dockerfile.frankenphp
+    restart: unless-stopped
+    deploy:
+      replicas: ${REPLICAS}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.simple-expense_app.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.simple-expense_app.entrypoints=websecure"
+      - "traefik.http.routers.simple-expense_app.tls=true"
+      - "traefik.http.services.simple-expense_app.loadbalancer.server.port=8000"
+      - "traefik.docker.network=km_traefik-public"
+    environment:
+      - APP_NAME=${APP_NAME:-Laravel}
+      - APP_ENV=${APP_ENV:-local}
+      - OCTANE_SERVER=frankenphp
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - QUEUE_CONNECTION=redis
+      - SESSION_DRIVER=redis
+      - APP_URL=${APP_URL}
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=email-smtp.us-east-1.amazonaws.com
+      - MAIL_PORT=587
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME}
+      - TYPESENSE_HOST=typesense
+      - TYPESENSE_PORT=8108
+      - TYPESENSE_PROTOCOL=http
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-xyz123}
+    volumes:
+      - ../:/app
+      - /app/vendor
+      - ./frankenphp_server/caddy_data:/data
+      - ./frankenphp_server/caddy_config:/config
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    networks:
+      - simple-expense_net
+      - km_traefik-public
+
+  # Queue worker using the same FrankenPHP image
+  # simple-expense_worker:
+  #   build:
+  #     context: ..
+  #     dockerfile: ./frankenphp_server/Dockerfile.frankenphp
+  #   container_name: simple-expense_worker_franken
+  #   restart: unless-stopped
+  #   entrypoint: ["php"]
+  #   command:
+  #     [
+  #       "artisan",
+  #       "queue:work",
+  #       "--queue=default",
+  #       "--sleep=3",
+  #       "--tries=3",
+  #       "--max-jobs=1000",
+  #     ]
+  #   volumes:
+  #     - ../:/app
+  #   environment:
+  #     - APP_ENV=production
+  #     - DB_CONNECTION=pgsql
+  #     - DB_HOST=db
+  #     - DB_PORT=5432
+  #     - DB_DATABASE=${DB_DATABASE}
+  #     - DB_USERNAME=${DB_USERNAME}
+  #     - DB_PASSWORD=${DB_PASSWORD}
+  #     - REDIS_HOST=redis
+  #     - REDIS_PASSWORD=${REDIS_PASSWORD}
+  #     - QUEUE_CONNECTION=redis
+  #     - MAIL_MAILER=smtp
+  #     - MAIL_HOST=email-smtp.us-east-1.amazonaws.com
+  #     - MAIL_PORT=587
+  #     - MAIL_USERNAME=${MAIL_USERNAME}
+  #     - MAIL_PASSWORD=${MAIL_PASSWORD}
+  #     - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+  #     - MAIL_FROM_NAME=${MAIL_FROM_NAME}
+  #   depends_on:
+  #     frankenphp:
+  #       condition: service_started
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_started
+  #   networks:
+  #     - simple-expense_net
+
+  # PostgreSQL database
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: simple-expense_db_franken
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: ${DB_DATABASE}
+  #     POSTGRES_USER: ${DB_USERNAME}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${DB_PASSWORD} -d ${DB_DATABASE}"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+  #   ports:
+  #     - "5434:5432"
+  #   volumes:
+  #     - ./pgsql-data:/var/lib/postgresql/data
+  #   networks:
+  #     - simple-expense_net
+
+  # Weekly database backup - deletes old backup and creates a fresh pg_dump
+  # db_backup:
+  #   image: postgres:16-alpine
+  #   container_name: simple-expense_backup_franken
+  #   restart: unless-stopped
+  #   entrypoint: ["/bin/sh", "-c"]
+  #   command:
+  #     - |
+  #       while true; do
+  #         echo "[$(date)] Starting weekly backup..."
+  #         rm -f /backups/*.sql.gz
+  #         PGPASSWORD=${DB_PASSWORD} pg_dump -h db -U ${DB_USERNAME} -d ${DB_DATABASE} | gzip > /backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
+  #         echo "[$(date)] Backup complete. Next backup in 7 days."
+  #         sleep 604800
+  #       done
+  #   environment:
+  #     PGPASSWORD: ${DB_PASSWORD}
+  #   volumes:
+  #     - ./db-backups:/backups
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   networks:
+  #     - simple-expense_net
+
+  # Adminer for database management
+  # adminer:
+  #   image: adminer
+  #   container_name: simple-expense_adminer_franken
+  #   restart: unless-stopped
+  #   environment:
+  #     ADMINER_DEFAULT_SERVER: db
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.simple-expense-adminer-franken.rule=Host(`${ADMINER_DOMAIN}`)"
+  #     - "traefik.http.routers.simple-expense-adminer-franken.entrypoints=websecure"
+  #     - "traefik.http.routers.simple-expense-adminer-franken.tls=true"
+  #     - "traefik.http.services.simple-expense-adminer-franken.loadbalancer.server.port=8080"
+  #     - "traefik.docker.network=km_traefik-public"
+  #   networks:
+  #     - simple-expense_net
+  #     - km_traefik-public
+
+  # Redis cache
+  # redis:
+  #   image: redis:alpine
+  #   container_name: simple-expense_redis_franken
+  #   restart: unless-stopped
+  #   command: redis-server --requirepass redis@root
+  #   networks:
+  #     - simple-expense_net
+
+  # Typesense search engine
+  # typesense:
+  #   image: typesense/typesense:27.1
+  #   container_name: simple-expense_typesense_franken
+  #   restart: unless-stopped
+  #   environment:
+  #     TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-xyz123}
+  #     TYPESENSE_DATA_DIR: /data
+  #   volumes:
+  #     - ./typesense-data:/data
+  #   ports:
+  #     - "8108:8108"
+  #   networks:
+  #     - simple-expense_net
+
+networks:
+  simple-expense_net:
+    driver: bridge
+  km_traefik-public:
+    external: true
+
+# volumes:
+#   traefik_certs:
+#     external: true
+#   traefik_dynamic:
+#     external: true

@@ -18,6 +18,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 #[Title('Categories')]
@@ -25,11 +26,14 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
 {
     use InteractsWithActions;
     use InteractsWithSchemas;
+    use WithPagination;
 
     #[Url]
     public string $search = '';
 
     public string $filter = 'all';
+
+    public int $perPage = 10;
 
     public ?int $editingMainId = null;
 
@@ -40,6 +44,21 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
     public ?int $deletingMainId = null;
 
     public ?int $deletingSubId = null;
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
 
     public function createMainCategoryAction(): Action
     {
@@ -235,7 +254,7 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
 
     public function render()
     {
-        $query = MainCategory::with('rootSubCategoriesWithChildren')
+        $query = MainCategory::with(['rootSubCategoriesWithChildren', 'subCategories'])
             ->orderBy('sort_order')
             ->orderBy('name');
 
@@ -256,7 +275,7 @@ class CategoryIndex extends Component implements HasActions, HasSchemas
         }
 
         return view('livewire.categories.category-index', [
-            'mainCategories' => $query->get(),
+            'mainCategories' => $query->paginate($this->perPage),
         ]);
     }
 }
