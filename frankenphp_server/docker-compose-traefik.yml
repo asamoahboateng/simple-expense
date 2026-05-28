@@ -269,8 +269,8 @@ networks:
   km_traefik-public:
     external: true
 
-# volumes:
-#   traefik_certs:
-#     external: true
-#   traefik_dynamic:
-#     external: true
+volumes:
+  traefik_certs:
+    external: true
+  traefik_dynamic:
+    external: true
