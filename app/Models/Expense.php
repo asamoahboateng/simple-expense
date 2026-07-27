@@ -20,6 +20,8 @@ class Expense extends Model
         'main_category_id',
         'sub_category_id',
         'expense_date',
+        'import_source',
+        'import_source_id',
     ];
 
     protected function casts(): array

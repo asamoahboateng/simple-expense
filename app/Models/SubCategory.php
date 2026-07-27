@@ -20,6 +20,8 @@ class SubCategory extends Model
         'parent_id',
         'depth',
         'sort_order',
+        'import_source',
+        'import_source_id',
     ];
 
     public function mainCategory(): BelongsTo

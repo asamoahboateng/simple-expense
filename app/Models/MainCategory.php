@@ -17,6 +17,8 @@ class MainCategory extends Model
         'icon',
         'color',
         'sort_order',
+        'import_source',
+        'import_source_id',
     ];
 
     public function subCategories(): HasMany
