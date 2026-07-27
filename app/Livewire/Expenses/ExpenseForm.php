@@ -4,7 +4,11 @@ namespace App\Livewire\Expenses;
 
 use App\Models\Expense;
 use App\Models\MainCategory;
+use App\Models\SubCategory;
 use App\Services\CategoryService;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -19,8 +23,9 @@ use Livewire\Component;
 
 #[Layout('layouts.app')]
 #[Title('Expense')]
-class ExpenseForm extends Component implements HasSchemas
+class ExpenseForm extends Component implements HasActions, HasSchemas
 {
+    use InteractsWithActions;
     use InteractsWithSchemas;
 
     public ?array $data = [];
@@ -67,11 +72,18 @@ class ExpenseForm extends Component implements HasSchemas
                     ->helperText('Defaults to you. Change if someone else made this expense.'),
                 Select::make('main_category_id')
                     ->label('Main Category')
-                    ->options(MainCategory::orderBy('name')->pluck('name', 'id'))
+                    ->options(fn () => MainCategory::orderBy('name')->pluck('name', 'id'))
                     ->required()
                     ->live()
                     ->afterStateUpdated(fn (callable $set) => $set('sub_category_id', null))
-                    ->searchable(),
+                    ->searchable()
+                    ->createOptionForm([
+                        TextInput::make('name')->required()->maxLength(255),
+                        Textarea::make('description')->rows(2),
+                        TextInput::make('icon')->placeholder('e.g. shopping-bag'),
+                        ColorPicker::make('color'),
+                    ])
+                    ->createOptionUsing(fn (array $data) => MainCategory::create($data)->getKey()),
                 Select::make('sub_category_id')
                     ->label('Subcategory')
                     ->options(function (callable $get) {
@@ -82,7 +94,30 @@ class ExpenseForm extends Component implements HasSchemas
                         return CategoryService::getSubCategoryOptionsForMainCategory($mainCategoryId);
                     })
                     ->searchable()
-                    ->placeholder('Select subcategory (optional)'),
+                    ->placeholder('Select subcategory (optional)')
+                    ->disabled(fn (callable $get) => ! $get('main_category_id'))
+                    ->helperText(fn (callable $get) => $get('main_category_id') ? null : 'Select a main category first.')
+                    ->createOptionForm(function (callable $get) {
+                        $mainCategoryId = $get('main_category_id');
+
+                        return [
+                            TextInput::make('name')->required()->maxLength(255),
+                            Textarea::make('description')->rows(2),
+                            Select::make('parent_id')
+                                ->label('Parent Subcategory')
+                                ->options(fn () => $mainCategoryId
+                                    ? SubCategory::where('main_category_id', $mainCategoryId)->get()->mapWithKeys(fn ($s) => [$s->id => $s->breadcrumb])
+                                    : [])
+                                ->placeholder('None (root level)')
+                                ->searchable(),
+                        ];
+                    })
+                    ->createOptionUsing(function (array $data, callable $get) {
+                        return SubCategory::create([
+                            ...$data,
+                            'main_category_id' => $get('main_category_id'),
+                        ])->getKey();
+                    }),
                 DatePicker::make('expense_date')
                     ->required()
                     ->maxDate(now())
