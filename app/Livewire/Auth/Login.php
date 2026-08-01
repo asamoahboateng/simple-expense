@@ -24,7 +24,7 @@ class Login extends Component
 
         if (Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
             session()->regenerate();
-            $this->redirect(route('dashboard'));
+            $this->redirect(route('home'));
             return;
         }
 

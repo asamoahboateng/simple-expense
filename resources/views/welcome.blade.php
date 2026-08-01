@@ -23,7 +23,7 @@
             </div>
             <div class="flex items-center gap-3">
                 @auth
-                    <a href="{{ route('dashboard') }}"
+                    <a href="{{ route('home') }}"
                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                         Dashboard
                     </a>
@@ -59,7 +59,7 @@
             </p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
                 @auth
-                    <a href="{{ route('dashboard') }}"
+                    <a href="{{ route('home') }}"
                        class="w-full sm:w-auto px-8 py-3.5 text-base font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all hover:shadow-xl hover:shadow-blue-600/30">
                         Go to Dashboard
                     </a>
@@ -173,7 +173,7 @@
             <h2 class="text-3xl font-bold mb-4">Ready to take control of your spending?</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-8">Create a free account and start tracking your expenses in minutes.</p>
             @auth
-                <a href="{{ route('dashboard') }}"
+                <a href="{{ route('home') }}"
                    class="inline-flex px-8 py-3.5 text-base font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all hover:shadow-xl hover:shadow-blue-600/30">
                     Go to Dashboard
                 </a>

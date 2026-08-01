@@ -7,6 +7,13 @@ use App\Livewire\Categories\CategoryReport;
 use App\Livewire\Dashboard;
 use App\Livewire\Expenses\ExpenseForm;
 use App\Livewire\Expenses\ExpenseList;
+use App\Livewire\Hub;
+use App\Livewire\Inventory\InventoryDashboard;
+use App\Livewire\Inventory\InventoryReport;
+use App\Livewire\Inventory\Pos;
+use App\Livewire\Inventory\ProductIndex;
+use App\Livewire\Inventory\SaleHistory;
+use App\Livewire\Inventory\SaleReceipt;
 use App\Livewire\Migration\PullFromServer;
 use App\Livewire\Reports\Reports;
 use App\Http\Controllers\ServerMigrationExportController;
@@ -31,13 +38,23 @@ Route::middleware('guest')->group(function () {
 
 // Authenticated routes
 Route::middleware('auth')->group(function () {
-    Route::get('/', Dashboard::class)->name('dashboard');
+    Route::get('/', Hub::class)->name('home');
+    Route::get('/expenses/dashboard', Dashboard::class)->name('expenses.dashboard');
     Route::get('/categories', CategoryIndex::class)->name('categories.index');
     Route::get('/categories/{mainCategory}/report', CategoryReport::class)->name('categories.report');
     Route::get('/expenses', ExpenseList::class)->name('expenses.index');
     Route::get('/expenses/create', ExpenseForm::class)->name('expenses.create');
     Route::get('/expenses/{expense}/edit', ExpenseForm::class)->name('expenses.edit');
     Route::get('/reports', Reports::class)->name('reports');
+
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        Route::get('/', InventoryDashboard::class)->name('dashboard');
+        Route::get('/products', ProductIndex::class)->name('products');
+        Route::get('/pos', Pos::class)->name('pos');
+        Route::get('/sales', SaleHistory::class)->name('sales');
+        Route::get('/sales/{sale}', SaleReceipt::class)->name('sales.show');
+        Route::get('/reports', InventoryReport::class)->name('reports');
+    });
 
     Route::post('/logout', function () {
         auth()->logout();

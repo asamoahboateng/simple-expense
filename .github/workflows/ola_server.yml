@@ -1,0 +1,77 @@
+name: Deploy to OLA Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    if: contains(github.event.head_commit.message, '[ola]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Doppler CLI
+        run: curl -Ls --tlsv1.2 https://cli.doppler.com/install.sh | sudo sh
+
+      - name: Fetch secrets from Doppler
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          doppler secrets get HETZNER_SERVER_KEY --plain > /tmp/ssh_key
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          cp /tmp/ssh_key ~/.ssh/id_rsa
+          rm /tmp/ssh_key
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.OLA_IP }} >> ~/.ssh/known_hosts
+
+      - name: Ensure remote directory exists
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ secrets.OLA_SERVER_USER }}@${{ secrets.OLA_IP }} \
+            "mkdir -p ~/simple-expense"
+
+      - name: Stop services
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ secrets.OLA_SERVER_USER  }}@${{ secrets.OLA_IP }} \
+            "cd ~/simple-expense && ./pha stop || true"
+
+      - name: Pre-Deployment Permission Fix
+        # Fixes the 'rsync 23' error by ensuring the user owns the directory before syncing
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.OLA_SERVER_USER  }}@${{ secrets.OLA_IP }} \
+          "sudo chown -R ${{ secrets.OLA_SERVER_USER  }}:${{ secrets.OLA_SERVER_USER  }} ~/simple-expense || true"
+
+      - name: Rsync to server
+        run: |
+          rsync -avz --delete --ignore-errors \
+            --no-perms --no-owner --no-group \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.env' \
+            --exclude 'vendor/' \
+            --exclude 'node_modules/' \
+            --exclude 'storage/logs/' \
+            --exclude 'storage/app/' \
+            --exclude 'storage/framework/' \
+            --exclude 'bootstrap/cache/' \
+            -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+            ./ ${{ secrets.OLA_SERVER_USER  }}@${{ secrets.OLA_IP }}:~/simple-expense/ || true
+
+      - name: Copy .env.ola.example to .env
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ secrets.OLA_SERVER_USER  }}@${{ secrets.OLA_IP }} \
+            "cd ~/simple-expense/frankenphp_server && cp .env.ola.example .env && echo '.env updated from .env.ola.example'"
+
+      - name: Start services
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ secrets.OLA_SERVER_USER  }}@${{ secrets.OLA_IP }} \
+            "cd ~/simple-expense && ./pha start"
