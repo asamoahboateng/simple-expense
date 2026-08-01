@@ -8,6 +8,7 @@ services:
     entrypoint: ["/bin/sh", "/app/frankenphp_server/init.sh"]
     volumes:
       - ../:/app
+      - vendor_data:/app/vendor
     environment:
       - APP_ENV=${APP_ENV:-local}
       - DB_CONNECTION=pgsql
@@ -118,7 +119,7 @@ services:
       - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-xyz123}
     volumes:
       - ../:/app
-      - /app/vendor
+      - vendor_data:/app/vendor
       - ./frankenphp_server/caddy_data:/data
       - ./frankenphp_server/caddy_config:/config
     depends_on:
@@ -270,6 +271,7 @@ networks:
     external: true
 
 volumes:
+  vendor_data:
   traefik_certs:
     external: true
   traefik_dynamic:
