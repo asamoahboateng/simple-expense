@@ -1,4 +1,4 @@
-name: Deploy to OLA Server
+name: Deploy to OLA Server 1
 
 on:
   push:
