@@ -70,6 +70,17 @@ jobs:
             ${{ secrets.OLA_SERVER_USER  }}@${{ secrets.OLA_IP }} \
             "cd ~/simple-expense/frankenphp_server && cp .env.ola.example .env && echo '.env updated from .env.ola.example'"
 
+      - name: Post-deploy
+        run: |
+            # Ensure storage directories exist with correct permissions
+            for dir in storage/app storage/logs bootstrap/cache; do
+              [ -d "$dir" ] || mkdir -p "$dir"
+            done
+            for dir in storage/ bootstrap/cache/; do
+              [ "$(stat -c '%a' "$dir")" = "755" ] || chmod -R 755 "$dir"
+            done
+          EOF
+
       - name: Start services
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
