@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy to Hetzner
 
 on:
   push:
@@ -7,117 +7,70 @@ on:
 
 jobs:
   deploy:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: hetzner
-            env_source_file: .env.example
-            rsync_excludes: >-
-              --exclude '.git/' --exclude '.github/' --exclude '.env'
-              --exclude 'vendor/' --exclude 'node_modules/'
-              --exclude 'storage/app/' --exclude 'storage/logs/'
-          - target: ola
-            env_source_file: .env.ola.example
-            rsync_excludes: >-
-              --exclude '.git/' --exclude '.github/' --exclude '.env'
-              --exclude 'vendor/' --exclude 'node_modules/'
-              --exclude 'storage/logs/' --exclude 'storage/app/'
-              --exclude 'storage/framework/' --exclude 'bootstrap/cache/'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Check whether this target should deploy
-        env:
-          TARGET: ${{ matrix.target }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: |
-          if [ "$TARGET" = "hetzner" ] || [[ "$COMMIT_MESSAGE" == *"[ola]"* ]]; then
-            echo "SHOULD_RUN=true" >> $GITHUB_ENV
-          else
-            echo "SHOULD_RUN=false" >> $GITHUB_ENV
-          fi
+      - name: Checkout code
+        uses: actions/checkout@v6
 
       - name: Install Doppler CLI
-        if: env.SHOULD_RUN == 'true'
         run: curl -Ls --tlsv1.2 https://cli.doppler.com/install.sh | sudo sh
 
-      - name: Fetch SSH key from Doppler
-        if: env.SHOULD_RUN == 'true'
-        env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-        run: doppler secrets get HETZNER_SERVER_KEY --plain > /tmp/ssh_key
-
-      - name: Resolve Hetzner target config
-        if: env.SHOULD_RUN == 'true' && matrix.target == 'hetzner'
+      - name: Fetch secrets from Doppler
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
         run: |
-          echo "SERVER_IP=$(doppler secrets get HETZNER_SERVER_IP --plain)" >> $GITHUB_ENV
-          echo "SERVER_USER=$(doppler secrets get HETZNER_SERVER_USER --plain)" >> $GITHUB_ENV
-
-      - name: Resolve OLA target config
-        if: env.SHOULD_RUN == 'true' && matrix.target == 'ola'
-        run: |
-          echo "SERVER_IP=${{ secrets.OLA_IP }}" >> $GITHUB_ENV
-          echo "SERVER_USER=${{ secrets.OLA_SERVER_USER }}" >> $GITHUB_ENV
+          echo "HETZNER_SERVER_IP=$(doppler secrets get HETZNER_SERVER_IP --plain)" >> $GITHUB_ENV
+          echo "HETZNER_SERVER_USER=$(doppler secrets get HETZNER_SERVER_USER --plain)" >> $GITHUB_ENV
+          doppler secrets get HETZNER_SERVER_KEY --plain > /tmp/ssh_key
 
       - name: Set up SSH key
-        if: env.SHOULD_RUN == 'true'
         run: |
           mkdir -p ~/.ssh
           cp /tmp/ssh_key ~/.ssh/id_rsa
           rm /tmp/ssh_key
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ env.HETZNER_SERVER_IP }} >> ~/.ssh/known_hosts
 
       - name: Ensure remote directory exists
-        if: env.SHOULD_RUN == 'true'
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
             "mkdir -p ~/simple-expense"
 
       - name: Stop services
-        if: env.SHOULD_RUN == 'true'
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
             "cd ~/simple-expense && ./pha stop || true"
 
       - name: Pre-Deployment Permission Fix
-        if: env.SHOULD_RUN == 'true'
+        # Fixes the 'rsync 23' error by ensuring the user owns the directory before syncing
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
-            "sudo chown -R $SERVER_USER:$SERVER_USER ~/simple-expense || true"
+          ssh -i ~/.ssh/id_rsa ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+          "sudo chown -R ${{ env.HETZNER_SERVER_USER }}:${{ env.HETZNER_SERVER_USER }} ~/simple-expense || true"
 
       - name: Rsync to server
-        if: env.SHOULD_RUN == 'true'
         run: |
-          rsync -avz --delete --ignore-errors --no-perms --no-owner --no-group \
-            ${{ matrix.rsync_excludes }} \
+          rsync -avz --delete \
+            --no-perms --no-owner --no-group \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.env' \
+            --exclude 'vendor/' \
+            --exclude 'node_modules/' \
+            --exclude 'storage/app/' \
+            --exclude 'storage/logs/' \
             -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
-            ./ "$SERVER_USER@$SERVER_IP:~/simple-expense/" || true
+            ./ ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }}:~/simple-expense/
 
-      - name: Copy env file
-        if: env.SHOULD_RUN == 'true'
+      - name: Copy .env.example to .env
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
-            "cd ~/simple-expense/frankenphp_server && cp ${{ matrix.env_source_file }} .env && echo '.env updated from ${{ matrix.env_source_file }}'"
-
-      - name: Post-deploy
-        if: env.SHOULD_RUN == 'true'
-        run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
-            'cd ~/simple-expense && \
-             for dir in storage/app storage/logs bootstrap/cache; do \
-               [ -d "$dir" ] || mkdir -p "$dir"; \
-             done && \
-             for dir in storage/ bootstrap/cache/; do \
-               [ "$(stat -c "%a" "$dir")" = "755" ] || chmod -R 755 "$dir"; \
-             done'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+            "cd ~/simple-expense/frankenphp_server && cp .env.example .env && echo '.env updated from .env.example in frankenphp'"
 
       - name: Start services
-        if: env.SHOULD_RUN == 'true'
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
-            "cd ~/simple-expense && ./pha start"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+            "cd ~/simple-expense && ./pha start "
