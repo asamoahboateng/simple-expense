@@ -7,7 +7,6 @@ on:
 
 jobs:
   deploy:
-    if: matrix.target == 'hetzner' || contains(github.event.head_commit.message, '[ola]')
     strategy:
       fail-fast: false
       matrix:
@@ -29,16 +28,27 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Check whether this target should deploy
+        run: |
+          if [ "${{ matrix.target }}" = "hetzner" ] || \
+             [[ "${{ github.event.head_commit.message }}" == *"[ola]"* ]]; then
+            echo "SHOULD_RUN=true" >> $GITHUB_ENV
+          else
+            echo "SHOULD_RUN=false" >> $GITHUB_ENV
+          fi
+
       - name: Install Doppler CLI
+        if: env.SHOULD_RUN == 'true'
         run: curl -Ls --tlsv1.2 https://cli.doppler.com/install.sh | sudo sh
 
       - name: Fetch SSH key from Doppler
+        if: env.SHOULD_RUN == 'true'
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
         run: doppler secrets get HETZNER_SERVER_KEY --plain > /tmp/ssh_key
 
       - name: Resolve Hetzner target config
-        if: matrix.target == 'hetzner'
+        if: env.SHOULD_RUN == 'true' && matrix.target == 'hetzner'
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
         run: |
@@ -46,12 +56,13 @@ jobs:
           echo "SERVER_USER=$(doppler secrets get HETZNER_SERVER_USER --plain)" >> $GITHUB_ENV
 
       - name: Resolve OLA target config
-        if: matrix.target == 'ola'
+        if: env.SHOULD_RUN == 'true' && matrix.target == 'ola'
         run: |
           echo "SERVER_IP=${{ secrets.OLA_IP }}" >> $GITHUB_ENV
           echo "SERVER_USER=${{ secrets.OLA_SERVER_USER }}" >> $GITHUB_ENV
 
       - name: Set up SSH key
+        if: env.SHOULD_RUN == 'true'
         run: |
           mkdir -p ~/.ssh
           cp /tmp/ssh_key ~/.ssh/id_rsa
@@ -60,21 +71,25 @@ jobs:
           ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
 
       - name: Ensure remote directory exists
+        if: env.SHOULD_RUN == 'true'
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
             "mkdir -p ~/simple-expense"
 
       - name: Stop services
+        if: env.SHOULD_RUN == 'true'
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
             "cd ~/simple-expense && ./pha stop || true"
 
       - name: Pre-Deployment Permission Fix
+        if: env.SHOULD_RUN == 'true'
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
             "sudo chown -R $SERVER_USER:$SERVER_USER ~/simple-expense || true"
 
       - name: Rsync to server
+        if: env.SHOULD_RUN == 'true'
         run: |
           rsync -avz --delete --ignore-errors --no-perms --no-owner --no-group \
             ${{ matrix.rsync_excludes }} \
@@ -82,11 +97,13 @@ jobs:
             ./ "$SERVER_USER@$SERVER_IP:~/simple-expense/" || true
 
       - name: Copy env file
+        if: env.SHOULD_RUN == 'true'
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
             "cd ~/simple-expense/frankenphp_server && cp ${{ matrix.env_source_file }} .env && echo '.env updated from ${{ matrix.env_source_file }}'"
 
       - name: Post-deploy
+        if: env.SHOULD_RUN == 'true'
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
             'cd ~/simple-expense && \
@@ -98,6 +115,7 @@ jobs:
              done'
 
       - name: Start services
+        if: env.SHOULD_RUN == 'true'
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
             "cd ~/simple-expense && ./pha start"
