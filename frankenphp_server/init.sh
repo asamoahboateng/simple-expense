@@ -3,13 +3,18 @@ set -e
 
 echo "Running init tasks..."
 
+# Ensure storage directories exist before anything boots the framework
+# (composer's package:discover boots Laravel, and view.compiled resolves via
+# realpath() which returns false - not an error - when the dir is missing)
+mkdir -p storage/framework/{sessions,views,cache} storage/app/public storage/logs bootstrap/cache
+
 # Install/update Composer dependencies
 echo "Installing Composer dependencies..."
 composer install --optimize-autoloader --no-interaction --no-cache
 
 # Run database migrations
-# echo "Running migrations..."
-# php artisan migrate --force
+echo "Running migrations..."
+php artisan migrate --force
 
 # Link storage
 echo "Linking storage..."
