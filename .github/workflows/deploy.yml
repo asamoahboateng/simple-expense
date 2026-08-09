@@ -1,4 +1,4 @@
-name: Deploy to Hetzner
+name: Deploy
 
 on:
   push:
@@ -7,21 +7,49 @@ on:
 
 jobs:
   deploy:
+    if: matrix.target == 'hetzner' || contains(github.event.head_commit.message, '[ola]')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: hetzner
+            env_source_file: .env.example
+            rsync_excludes: >-
+              --exclude '.git/' --exclude '.github/' --exclude '.env'
+              --exclude 'vendor/' --exclude 'node_modules/'
+              --exclude 'storage/app/' --exclude 'storage/logs/'
+          - target: ola
+            env_source_file: .env.ola.example
+            rsync_excludes: >-
+              --exclude '.git/' --exclude '.github/' --exclude '.env'
+              --exclude 'vendor/' --exclude 'node_modules/'
+              --exclude 'storage/logs/' --exclude 'storage/app/'
+              --exclude 'storage/framework/' --exclude 'bootstrap/cache/'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
       - name: Install Doppler CLI
         run: curl -Ls --tlsv1.2 https://cli.doppler.com/install.sh | sudo sh
 
-      - name: Fetch secrets from Doppler
+      - name: Fetch SSH key from Doppler
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: doppler secrets get HETZNER_SERVER_KEY --plain > /tmp/ssh_key
+
+      - name: Resolve Hetzner target config
+        if: matrix.target == 'hetzner'
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
         run: |
-          echo "HETZNER_SERVER_IP=$(doppler secrets get HETZNER_SERVER_IP --plain)" >> $GITHUB_ENV
-          echo "HETZNER_SERVER_USER=$(doppler secrets get HETZNER_SERVER_USER --plain)" >> $GITHUB_ENV
-          doppler secrets get HETZNER_SERVER_KEY --plain > /tmp/ssh_key
+          echo "SERVER_IP=$(doppler secrets get HETZNER_SERVER_IP --plain)" >> $GITHUB_ENV
+          echo "SERVER_USER=$(doppler secrets get HETZNER_SERVER_USER --plain)" >> $GITHUB_ENV
+
+      - name: Resolve OLA target config
+        if: matrix.target == 'ola'
+        run: |
+          echo "SERVER_IP=${{ secrets.OLA_IP }}" >> $GITHUB_ENV
+          echo "SERVER_USER=${{ secrets.OLA_SERVER_USER }}" >> $GITHUB_ENV
 
       - name: Set up SSH key
         run: |
@@ -29,48 +57,47 @@ jobs:
           cp /tmp/ssh_key ~/.ssh/id_rsa
           rm /tmp/ssh_key
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ env.HETZNER_SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
 
       - name: Ensure remote directory exists
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
             "mkdir -p ~/simple-expense"
 
       - name: Stop services
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
             "cd ~/simple-expense && ./pha stop || true"
 
       - name: Pre-Deployment Permission Fix
-        # Fixes the 'rsync 23' error by ensuring the user owns the directory before syncing
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
-          "sudo chown -R ${{ env.HETZNER_SERVER_USER }}:${{ env.HETZNER_SERVER_USER }} ~/simple-expense || true"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
+            "sudo chown -R $SERVER_USER:$SERVER_USER ~/simple-expense || true"
 
       - name: Rsync to server
         run: |
-          rsync -avz --delete \
-            --no-perms --no-owner --no-group \
-            --exclude '.git/' \
-            --exclude '.github/' \
-            --exclude '.env' \
-            --exclude 'vendor/' \
-            --exclude 'node_modules/' \
-            --exclude 'storage/app/' \
-            --exclude 'storage/logs/' \
+          rsync -avz --delete --ignore-errors --no-perms --no-owner --no-group \
+            ${{ matrix.rsync_excludes }} \
             -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
-            ./ ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }}:~/simple-expense/
+            ./ "$SERVER_USER@$SERVER_IP:~/simple-expense/" || true
 
-      - name: Copy .env.example to .env
+      - name: Copy env file
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
-            "cd ~/simple-expense/frankenphp_server && cp .env.example .env && echo '.env updated from .env.example in frankenphp'"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
+            "cd ~/simple-expense/frankenphp_server && cp ${{ matrix.env_source_file }} .env && echo '.env updated from ${{ matrix.env_source_file }}'"
+
+      - name: Post-deploy
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
+            'cd ~/simple-expense && \
+             for dir in storage/app storage/logs bootstrap/cache; do \
+               [ -d "$dir" ] || mkdir -p "$dir"; \
+             done && \
+             for dir in storage/ bootstrap/cache/; do \
+               [ "$(stat -c "%a" "$dir")" = "755" ] || chmod -R 755 "$dir"; \
+             done'
 
       - name: Start services
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-            ${{ env.HETZNER_SERVER_USER }}@${{ env.HETZNER_SERVER_IP }} \
-            "cd ~/simple-expense && ./pha start "
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" \
+            "cd ~/simple-expense && ./pha start"
