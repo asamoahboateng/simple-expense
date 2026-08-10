@@ -6,7 +6,10 @@ echo "Running init tasks..."
 # Ensure storage directories exist before anything boots the framework
 # (composer's package:discover boots Laravel, and view.compiled resolves via
 # realpath() which returns false - not an error - when the dir is missing)
-mkdir -p storage/framework/{sessions,views,cache} storage/app/public storage/logs bootstrap/cache
+# Written without brace expansion: this entrypoint runs under /bin/sh (ash),
+# which doesn't support {a,b,c} expansion like bash does.
+mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache \
+  storage/app/public storage/logs bootstrap/cache
 
 # Install/update Composer dependencies
 echo "Installing Composer dependencies..."
