@@ -19,6 +19,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=redis
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - HOST_DOMAIN=${HOST_DOMAIN:-kalourmade.com}
     # depends_on:
     #   db:
     #     condition: service_healthy
@@ -118,6 +119,7 @@ services:
       - TYPESENSE_PORT=8108
       - TYPESENSE_PROTOCOL=http
       - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-xyz123}
+      - HOST_DOMAIN=${HOST_DOMAIN:-kalourmade.com}
     volumes:
       - ../:/app
       - vendor_data:/app/vendor

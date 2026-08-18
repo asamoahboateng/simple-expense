@@ -10,7 +10,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $host = request()->getHost();
-        if (str($host)->endsWith('.kalourmade.com') || $host === 'kalourmade.com') {
+        $olaHost = env('HOST_DOMAIN', 'kalourmade.com');
+        if (str($host)->endsWith('.' . $olaHost) || $host === $olaHost) {
             URL::forceScheme('https');
         }
     }
