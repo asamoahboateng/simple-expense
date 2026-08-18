@@ -71,6 +71,10 @@ Run this from your laptop while triggering a deploy (push a commit with `[ola]` 
 
 Any non-`200` lines in the output mark the downtime window. With the recreate-with-overlap deploy (see above), this should show at most a few seconds of gap around the final container swap — not the multi-minute gap from the old stop-then-rebuild flow.
 
+### Disk cleanup
+
+Every deploy prunes dangling images, build cache older than 48h, and any volumes no longer attached to a running container (`docker image prune -f`, `docker builder prune -f --filter until=48h`, `docker volume prune -f`) — all three commands only ever touch resources Docker itself considers unused, so named volumes still in use (`vendor_data`, `traefik_certs`, `traefik_dynamic`, `caddy_data`, `caddy_config`) are never at risk.
+
 ## Server-to-Server Migration
 
 To move data from one running instance of this app (the **old server**) to another (the **new server**), use the built-in pull-based migration feature — a full DB-to-DB migration isn't needed; both servers just need to be reachable over HTTP.
