@@ -61,6 +61,16 @@ cd ~/simple-expense
 docker compose -f frankenphp_server/docker-compose-traefik.yml --env-file frankenphp_server/.env run --rm init
 ```
 
+### Measuring deploy downtime
+
+Run this from your laptop while triggering a deploy (push a commit with `[ola]` in the message) to see exactly how much downtime, if any, occurs during the container swap:
+
+```bash
+./frankenphp_server/scripts/watch-uptime.sh https://expense.manage.ourladyofapostles.edu.gh/up 180
+```
+
+Any non-`200` lines in the output mark the downtime window. With the recreate-with-overlap deploy (see above), this should show at most a few seconds of gap around the final container swap — not the multi-minute gap from the old stop-then-rebuild flow.
+
 ## Server-to-Server Migration
 
 To move data from one running instance of this app (the **old server**) to another (the **new server**), use the built-in pull-based migration feature — a full DB-to-DB migration isn't needed; both servers just need to be reachable over HTTP.
