@@ -36,12 +36,6 @@ jobs:
             ${{ secrets.OLA_SERVER_USER }}@${{ secrets.OLA_IP }} \
             "mkdir -p ~/simple-expense"
 
-      - name: Stop services
-        run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-            ${{ secrets.OLA_SERVER_USER  }}@${{ secrets.OLA_IP }} \
-            "cd ~/simple-expense && ./pha stop || true"
-
       - name: Pre-Deployment Permission Fix
         # Fixes the 'rsync 23' error by ensuring the user owns the directory before syncing
         run: |
