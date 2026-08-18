@@ -94,6 +94,12 @@ services:
       - "traefik.http.routers.simple-expense_app.tls.certresolver=le"
       - "traefik.http.services.simple-expense_app.loadbalancer.server.port=8000"
       - "traefik.docker.network=km_traefik-public"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/up"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     environment:
       - APP_NAME=${APP_NAME:-Laravel}
       - APP_ENV=${APP_ENV:-local}
