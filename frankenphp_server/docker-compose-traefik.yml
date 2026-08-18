@@ -89,6 +89,7 @@ services:
       - "traefik.http.routers.simple-expense_app.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.simple-expense_app.entrypoints=websecure"
       - "traefik.http.routers.simple-expense_app.tls=true"
+      - "traefik.http.routers.simple-expense_app.tls.certresolver=le"
       - "traefik.http.services.simple-expense_app.loadbalancer.server.port=8000"
       - "traefik.docker.network=km_traefik-public"
     environment:
