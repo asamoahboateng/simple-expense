@@ -84,4 +84,4 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
             ${{ secrets.OLA_SERVER_USER  }}@${{ secrets.OLA_IP }} \
-            "docker image prune -f && docker builder prune -f --filter until=48h && docker volume prune -f"
+            "docker image prune -f && docker builder prune -f --filter until=48h && docker volume prune -f || true"
