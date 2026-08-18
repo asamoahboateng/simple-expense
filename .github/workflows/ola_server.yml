@@ -76,10 +76,8 @@ jobs:
             ${{ secrets.OLA_SERVER_USER }}@${{ secrets.OLA_IP }} \
             'cd ~/simple-expense && \
              for dir in storage/app storage/logs bootstrap/cache; do \
-               [ -d "$dir" ] || mkdir -p "$dir"; \
-             done && \
-             for dir in storage/ bootstrap/cache/; do \
-               [ "$(stat -c "%a" "$dir")" = "755" ] || chmod -R 755 "$dir"; \
+               [ -d "$dir" ] && continue; \
+               mkdir -p "$dir" && chmod -R 755 "$dir"; \
              done'
 
       - name: Start services
