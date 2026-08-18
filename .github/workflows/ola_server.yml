@@ -81,6 +81,7 @@ jobs:
             "cd ~/simple-expense && ./pha start"
 
       - name: Cleanup old images/cache/volumes
+        if: always()
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
             ${{ secrets.OLA_SERVER_USER  }}@${{ secrets.OLA_IP }} \

@@ -11,10 +11,18 @@ echo "Watching $URL for ${DURATION}s -> $LOGFILE"
 END=$((SECONDS + DURATION))
 
 while [ $SECONDS -lt $END ]; do
-    STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 "$URL" || echo "000")
-    echo "$(date '+%Y-%m-%dT%H:%M:%S.%3N') $STATUS" | tee -a "$LOGFILE"
+    STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 "$URL" || true)
+    echo "$(date '+%Y-%m-%dT%H:%M:%S') $STATUS" | tee -a "$LOGFILE"
     sleep 0.5
 done
 
 echo "Done. Non-200 lines:"
-grep -v ' 200$' "$LOGFILE" || echo "  (none — zero downtime observed)"
+NON200=$(grep -v ' 200$' "$LOGFILE" || true)
+if [ -z "$NON200" ]; then
+    echo "  (none — zero downtime observed)"
+else
+    echo "$NON200"
+    FIRST=$(echo "$NON200" | head -1 | awk '{print $1}')
+    LAST=$(echo "$NON200" | tail -1 | awk '{print $1}')
+    echo "Downtime window: $FIRST to $LAST (compare actual timestamps, not line count x 0.5s -- curl's own timeout can stretch each iteration up to ~2.5s during an outage)"
+fi

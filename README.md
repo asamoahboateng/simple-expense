@@ -69,11 +69,11 @@ Run this from your laptop while triggering a deploy (push a commit with `[ola]` 
 ./frankenphp_server/scripts/watch-uptime.sh https://expense.manage.ourladyofapostles.edu.gh/up 180
 ```
 
-Any non-`200` lines in the output mark the downtime window. With the recreate-with-overlap deploy (see above), this should show at most a few seconds of gap around the final container swap — not the multi-minute gap from the old stop-then-rebuild flow.
+Any non-`200` lines in the output mark the downtime window. With the recreate-with-overlap deploy (see above), this should show at most a few seconds of gap around the final container swap — not the multi-minute gap from the old stop-then-rebuild flow. Read the "Downtime window" timestamps the script prints at the end for the actual wall-clock gap, rather than estimating from the non-200 line count.
 
 ### Disk cleanup
 
-Every deploy prunes dangling images, build cache older than 48h, and any volumes no longer attached to a running container (`docker image prune -f`, `docker builder prune -f --filter until=48h`, `docker volume prune -f`) — all three commands only ever touch resources Docker itself considers unused, so named volumes still in use (`vendor_data`, `traefik_certs`, `traefik_dynamic`, `caddy_data`, `caddy_config`) are never at risk.
+Every deploy prunes dangling images, build cache older than 48h, and any volumes no longer attached to a running container (`docker image prune -f`, `docker builder prune -f --filter until=48h`, `docker volume prune -f`) — all three commands only ever touch resources Docker itself considers unused, so named volumes still in use (`vendor_data`, `traefik_certs`, `traefik_dynamic`, `caddy_data`, `caddy_config`) are never at risk. Note that `docker volume prune -f` and `docker image prune -f`/`docker builder prune -f` are host-wide, not scoped to this project — they also affect other Docker Compose projects running on the same server (verified safe on the current OLA server, which runs Docker 29.5.3, where `docker volume prune` only touches anonymous, not named, volumes by default; worth re-checking if this app is ever deployed to an older Docker host). Pruning also removes the just-superseded image immediately after a successful deploy, a deliberate tradeoff — the previous image isn't available as an instant rollback target, so a rollback would require rebuilding from the previous commit instead.
 
 ## Server-to-Server Migration
 
