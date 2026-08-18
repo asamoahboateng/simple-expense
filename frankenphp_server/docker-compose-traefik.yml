@@ -20,6 +20,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - HOST_DOMAIN=${HOST_DOMAIN:-kalourmade.com}
+      - MIGRATION_SECRET=${MIGRATION_SECRET:-singole_OlaKalourmade@SpecialMigration}
     # depends_on:
     #   db:
     #     condition: service_healthy
@@ -120,6 +121,7 @@ services:
       - TYPESENSE_PROTOCOL=http
       - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-xyz123}
       - HOST_DOMAIN=${HOST_DOMAIN:-kalourmade.com}
+      - MIGRATION_SECRET=${MIGRATION_SECRET:-singole_OlaKalourmade@SpecialMigration}
     volumes:
       - ../:/app
       - vendor_data:/app/vendor
